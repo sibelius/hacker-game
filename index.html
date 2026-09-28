@@ -1,0 +1,787 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Código Secreto</title>
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #070b09;
+    --painel: #0c1410;
+    --borda: #1f4d33;
+    --verde: #39ff7a;
+    --verde-fraco: #1c8a45;
+    --ambar: #ffb627;
+    --vermelho: #ff4d5e;
+    --ciano: #4de3ff;
+    --texto: #b8f5cc;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--texto);
+    font-family: 'VT323', monospace; font-size: 20px; min-height: 100vh;
+  }
+  /* efeito de monitor antigo */
+  body::after {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 1000;
+    background: repeating-linear-gradient(rgba(0,0,0,0) 0 2px, rgba(0,0,0,.18) 2px 4px);
+  }
+  .hidden { display: none !important; }
+  h1, h2, h3 { font-weight: normal; margin: 0; color: var(--verde); text-shadow: 0 0 8px rgba(57,255,122,.6); }
+  .brilho { text-shadow: 0 0 8px currentColor; }
+
+  .btn {
+    font-family: inherit; font-size: 22px; cursor: pointer; padding: 6px 16px;
+    background: transparent; color: var(--verde); border: 2px solid var(--verde); border-radius: 4px;
+    text-shadow: 0 0 6px rgba(57,255,122,.6); transition: background .1s;
+  }
+  .btn:hover { background: rgba(57,255,122,.15); }
+  .btn:disabled { opacity: .35; cursor: not-allowed; background: transparent; }
+  .btn.ambar { color: var(--ambar); border-color: var(--ambar); text-shadow: 0 0 6px rgba(255,182,39,.6); }
+  .btn.ambar:hover { background: rgba(255,182,39,.15); }
+  .btn.vermelho { color: var(--vermelho); border-color: var(--vermelho); }
+
+  /* ===== MENU ===== */
+  #tela-menu { max-width: 900px; margin: 0 auto; padding: 30px 16px; }
+  .logo { font-size: 72px; text-align: center; letter-spacing: 6px; color: var(--verde); text-shadow: 0 0 18px var(--verde); }
+  .logo small { display: block; font-size: 24px; letter-spacing: 2px; color: var(--ambar); text-shadow: 0 0 8px var(--ambar); }
+  #intro { white-space: pre-wrap; border: 2px solid var(--borda); background: var(--painel); padding: 16px; margin: 24px 0; min-height: 150px; }
+  .cursor { display: inline-block; width: 10px; background: var(--verde); animation: pisca 1s steps(1) infinite; }
+  @keyframes pisca { 50% { opacity: 0; } }
+  .missoes { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .missao {
+    border: 2px solid var(--borda); background: var(--painel); padding: 12px; cursor: pointer; border-radius: 4px;
+    transition: border-color .15s, transform .15s;
+  }
+  .missao:hover { border-color: var(--verde); transform: translateY(-2px); }
+  .missao .n { color: var(--ambar); }
+  .missao .t { font-size: 24px; color: var(--verde); }
+  .missao .e { font-size: 22px; letter-spacing: 2px; }
+  .missao.trancada { opacity: .35; cursor: not-allowed; }
+  .missao.trancada:hover { transform: none; border-color: var(--borda); }
+  .missao.feita { border-color: var(--verde-fraco); }
+
+  /* ===== JOGO ===== */
+  #tela-jogo { padding: 14px; }
+  .barra { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .barra .espaco { flex: 1; }
+  .layout { display: grid; grid-template-columns: 300px minmax(300px, 1fr) 300px; gap: 14px; }
+  @media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } }
+  .caixa { border: 2px solid var(--borda); background: var(--painel); border-radius: 4px; padding: 12px; }
+  .caixa h3 { font-size: 22px; margin-bottom: 8px; color: var(--ambar); text-shadow: 0 0 6px rgba(255,182,39,.5); }
+  .coluna { display: flex; flex-direction: column; gap: 14px; }
+  .historia { color: var(--texto); line-height: 1.2; }
+  .objetivo { color: var(--ciano); margin-top: 8px; }
+  .ref { font-size: 18px; }
+  .ref .linha { display: grid; grid-template-columns: 80px 1fr; gap: 6px; padding: 3px 0; border-bottom: 1px dashed #173524; }
+  .ref .cmd { color: var(--verde); font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; padding-top: 3px; }
+  .ref .novo { color: var(--ambar); font-size: 14px; margin-left: 4px; }
+  .ref .trancado { opacity: .3; }
+
+  /* editor */
+  .editor {
+    position: relative; display: grid; grid-template-columns: 44px 1fr; height: 480px;
+    border: 2px solid var(--verde-fraco); background: #050806; border-radius: 4px; overflow: hidden;
+    font-family: 'JetBrains Mono', monospace; font-size: 16px; line-height: 24px;
+  }
+  .gutter { padding: 10px 6px 10px 0; text-align: right; color: #2d6b45; overflow: hidden; user-select: none; background: #08110c; }
+  .gutter div { height: 24px; }
+  .gutter div.atual { color: var(--bg); background: var(--verde); }
+  .gutter div.erro { color: white; background: var(--vermelho); }
+  textarea#codigo {
+    position: relative; z-index: 2; resize: none; border: none; outline: none; background: transparent;
+    color: var(--verde); font: inherit; padding: 10px 12px; white-space: pre; overflow: auto;
+    text-transform: uppercase; caret-color: var(--verde); text-shadow: 0 0 4px rgba(57,255,122,.5);
+  }
+  textarea#codigo[readonly] { color: #8fe0ad; }
+  .destaque { position: absolute; left: 44px; right: 0; height: 24px; background: rgba(57,255,122,.14); border-left: 3px solid var(--verde); z-index: 1; pointer-events: none; }
+  .destaque.erro { background: rgba(255,77,94,.18); border-left-color: var(--vermelho); }
+  .info-editor { display: flex; justify-content: space-between; margin-top: 6px; font-size: 18px; color: #4a9d6a; }
+  #mensagem { min-height: 28px; margin-top: 8px; font-size: 22px; }
+  #mensagem.erro { color: var(--vermelho); text-shadow: 0 0 6px var(--vermelho); }
+  #mensagem.ok { color: var(--verde); }
+  #mensagem.aviso { color: var(--ambar); }
+
+  .controles { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+  .controles label { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+  input[type=range] { accent-color: var(--verde); }
+
+  /* registradores e fitas */
+  .regs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .reg { border: 2px solid var(--borda); text-align: center; padding: 6px; border-radius: 4px; }
+  .reg .nome { color: var(--ambar); font-size: 18px; }
+  .reg .valor { font-size: 40px; color: var(--verde); text-shadow: 0 0 10px var(--verde); }
+  .reg.pulso .valor { animation: pulso .3s; }
+  @keyframes pulso { 0% { color: white; transform: scale(1.2); } }
+  .fitas { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .fita h4 { margin: 0 0 4px; font-weight: normal; font-size: 18px; color: var(--ambar); text-align: center; }
+  .fita .cels { max-height: 330px; overflow: auto; border: 1px solid var(--borda); }
+  .cel { text-align: center; padding: 1px 0; border-bottom: 1px solid #10261a; font-size: 20px; }
+  .cel.usado { opacity: .3; }
+  .cel.proximo { background: rgba(77,227,255,.2); color: var(--ciano); }
+  .cel.certo { color: var(--verde); }
+  .cel.errado { color: var(--vermelho); background: rgba(255,77,94,.15); }
+  .cel.vazio { opacity: .25; }
+  .stats { display: flex; justify-content: space-between; margin-top: 8px; font-size: 18px; color: #4a9d6a; }
+
+  /* vitória */
+  #vitoria {
+    position: fixed; inset: 0; background: rgba(0,0,0,.85); display: grid; place-items: center; z-index: 500;
+  }
+  #vitoria .janela {
+    border: 3px solid var(--verde); background: var(--painel); padding: 30px; text-align: center; max-width: 520px; width: 90%;
+    box-shadow: 0 0 40px rgba(57,255,122,.4); animation: abre .4s ease-out;
+  }
+  @keyframes abre { from { transform: scale(.6); opacity: 0; } }
+  #vitoria .grande { font-size: 56px; color: var(--verde); text-shadow: 0 0 20px var(--verde); letter-spacing: 4px; }
+  #vitoria .estrelas { font-size: 48px; color: var(--ambar); letter-spacing: 8px; margin: 10px 0; }
+  #vitoria .linha-stat { font-size: 22px; }
+  #vitoria .acoes { display: flex; gap: 10px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
+
+  .chuva { position: fixed; inset: 0; pointer-events: none; z-index: 400; overflow: hidden; }
+  .gota { position: absolute; top: -40px; color: var(--verde); font-family: 'JetBrains Mono', monospace; font-size: 16px; animation: chove linear forwards; opacity: .8; text-shadow: 0 0 6px var(--verde); }
+  @keyframes chove { to { transform: translateY(110vh); } }
+</style>
+</head>
+<body>
+
+<!-- ===== MENU ===== -->
+<section id="tela-menu">
+  <div class="logo">CÓDIGO SECRETO<small>&gt; um jogo de hackear com algoritmos_</small></div>
+  <div id="intro"></div>
+  <h2 style="margin-bottom:12px">&gt; MISSÕES</h2>
+  <div class="missoes" id="missoes"></div>
+</section>
+
+<!-- ===== JOGO ===== -->
+<section id="tela-jogo" class="hidden">
+  <div class="barra">
+    <button class="btn" onclick="irMenu()">&lt; MISSÕES</button>
+    <h1 id="titulo-missao">MISSÃO</h1>
+    <div class="espaco"></div>
+    <button class="btn ambar" onclick="mostrarDica()">? DICA</button>
+  </div>
+
+  <div class="layout">
+    <!-- esquerda: missão + comandos -->
+    <div class="coluna">
+      <div class="caixa">
+        <h3>&gt; MISSÃO</h3>
+        <div class="historia" id="historia"></div>
+        <div class="objetivo" id="objetivo"></div>
+        <div id="dica" class="hidden" style="margin-top:10px;color:var(--ambar)"></div>
+      </div>
+      <div class="caixa ref">
+        <h3>&gt; COMANDOS</h3>
+        <div id="referencia"></div>
+      </div>
+    </div>
+
+    <!-- meio: editor -->
+    <div>
+      <div class="editor" id="editor">
+        <div class="gutter" id="gutter"></div>
+        <textarea id="codigo" spellcheck="false" autocomplete="off" autocapitalize="characters"></textarea>
+        <div class="destaque hidden" id="destaque"></div>
+      </div>
+      <div class="info-editor"><span id="info-linhas">0 linhas</span><span># = comentário &nbsp;·&nbsp; NOME: = etiqueta</span></div>
+      <div class="controles">
+        <button class="btn" id="btn-rodar" onclick="rodar()">▶ RODAR</button>
+        <button class="btn" id="btn-passo" onclick="passo()">⏭ PASSO</button>
+        <button class="btn ambar" id="btn-pausar" onclick="pausar()" disabled>⏸ PAUSAR</button>
+        <button class="btn vermelho" id="btn-parar" onclick="parar()" disabled>⏹ PARAR</button>
+        <label>velocidade <input type="range" id="velocidade" min="0" max="4" value="2"></label>
+      </div>
+      <div id="mensagem"></div>
+    </div>
+
+    <!-- direita: registradores + fitas -->
+    <div class="coluna">
+      <div class="caixa">
+        <h3>&gt; MEMÓRIA</h3>
+        <div class="regs">
+          <div class="reg" id="reg-acc"><div class="nome">ACC</div><div class="valor">0</div></div>
+          <div class="reg" id="reg-bak"><div class="nome">BAK</div><div class="valor">0</div></div>
+        </div>
+        <div class="stats"><span id="stat-ciclos">ciclos: 0</span><span id="stat-pc">linha: -</span></div>
+      </div>
+      <div class="caixa">
+        <div class="fitas">
+          <div class="fita"><h4>ENTRADA</h4><div class="cels" id="fita-in"></div></div>
+          <div class="fita"><h4>ESPERADO</h4><div class="cels" id="fita-esp"></div></div>
+          <div class="fita"><h4>SAÍDA</h4><div class="cels" id="fita-out"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== VITÓRIA ===== -->
+<div id="vitoria" class="hidden">
+  <div class="janela">
+    <div class="grande">ACESSO<br>CONCEDIDO</div>
+    <div class="estrelas" id="v-estrelas"></div>
+    <div class="linha-stat" id="v-linhas"></div>
+    <div class="linha-stat" id="v-ciclos"></div>
+    <div class="acoes">
+      <button class="btn ambar" onclick="fecharVitoria()">MELHORAR</button>
+      <button class="btn" id="v-proxima" onclick="proximaMissao()">PRÓXIMA MISSÃO &gt;</button>
+    </div>
+  </div>
+</div>
+<div class="chuva" id="chuva"></div>
+
+<script>
+// ============================================================
+//  COMANDOS
+// ============================================================
+const COMANDOS = {
+  IN:  { args: 0, desc: 'Pega o próximo número da ENTRADA e guarda no ACC.' },
+  OUT: { args: 0, desc: 'Envia o número do ACC para a SAÍDA.' },
+  ADD: { args: 1, desc: 'Soma ao ACC. Ex: ADD 3 ou ADD BAK' },
+  SUB: { args: 1, desc: 'Subtrai do ACC. Ex: SUB 1 ou SUB BAK' },
+  SET: { args: 1, desc: 'Coloca um número no ACC. Ex: SET 0' },
+  SAV: { args: 0, desc: 'Copia o ACC para o BAK (guarda para depois).' },
+  SWP: { args: 0, desc: 'Troca o ACC com o BAK.' },
+  JMP: { args: 1, pulo: true, desc: 'Pula para uma etiqueta. Ex: JMP LOOP' },
+  JEZ: { args: 1, pulo: true, desc: 'Pula se ACC = 0' },
+  JNZ: { args: 1, pulo: true, desc: 'Pula se ACC ≠ 0' },
+  JGZ: { args: 1, pulo: true, desc: 'Pula se ACC > 0' },
+  JLZ: { args: 1, pulo: true, desc: 'Pula se ACC < 0' },
+};
+const ORDEM_COMANDOS = ['IN', 'OUT', 'ADD', 'SUB', 'SAV', 'SWP', 'SET', 'JMP', 'JEZ', 'JNZ', 'JGZ', 'JLZ'];
+
+// ============================================================
+//  MISSÕES
+// ============================================================
+const r = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const lista = (n, a, b) => Array.from({ length: n }, () => r(a, b));
+
+const MISSOES = [
+  {
+    titulo: 'ECO',
+    historia: 'Entramos no computador do Dr. Bug! Para ganhar a confiança do sistema, repita tudo o que ele disser.',
+    objetivo: 'Copie cada número da ENTRADA para a SAÍDA.',
+    novos: ['IN', 'OUT'],
+    dica: 'IN pega um número, OUT envia ele. Quando o programa chega no fim, ele volta sozinho para a primeira linha!',
+    gerar: () => { const e = lista(8, 1, 9); return [e, e.slice()]; },
+    solucao: 'IN\nOUT',
+  },
+  {
+    titulo: 'MAIS UM',
+    historia: 'O cofre do Dr. Bug tem uma senha: cada número precisa ser um a mais que o original.',
+    objetivo: 'Para cada número da ENTRADA, envie ele + 1.',
+    novos: ['ADD'],
+    dica: 'Depois do IN, use ADD 1 antes de mandar com OUT.',
+    gerar: () => { const e = lista(8, 0, 20); return [e, e.map(x => x + 1)]; },
+    solucao: 'IN\nADD 1\nOUT',
+  },
+  {
+    titulo: 'CONTAGEM DE ROBÔS',
+    historia: 'O sensor dos robôs está contando errado: ele conta 3 a mais!',
+    objetivo: 'Para cada número, envie ele - 3.',
+    novos: ['SUB'],
+    dica: 'SUB funciona igual ao ADD, só que tira.',
+    gerar: () => { const e = lista(8, 3, 30); return [e, e.map(x => x - 3)]; },
+    solucao: 'IN\nSUB 3\nOUT',
+  },
+  {
+    titulo: 'DOBRO',
+    historia: 'Precisamos duplicar a energia do nosso escudo.',
+    objetivo: 'Para cada número, envie o dobro dele.',
+    novos: ['SAV'],
+    dica: 'Dobro de X é X + X. Use SAV para guardar uma cópia no BAK e depois ADD BAK.',
+    gerar: () => { const e = lista(8, 1, 25); return [e, e.map(x => x * 2)]; },
+    solucao: 'IN\nSAV\nADD BAK\nOUT',
+  },
+  {
+    titulo: 'ESPELHO',
+    historia: 'O mundo do Dr. Bug é ao contrário! Positivo vira negativo e negativo vira positivo.',
+    objetivo: 'Para cada número X, envie -X (o oposto dele).',
+    novos: ['SET'],
+    dica: '0 - X = -X. Guarde o X no BAK, coloque 0 no ACC e subtraia o BAK.',
+    gerar: () => { const e = lista(8, -15, 15); return [e, e.map(x => -x)]; },
+    solucao: 'IN\nSAV\nSET 0\nSUB BAK\nOUT',
+  },
+  {
+    titulo: 'FILTRO DE ZEROS',
+    historia: 'O sinal do satélite está cheio de ruído: um monte de zeros inúteis.',
+    objetivo: 'Envie todos os números, MENOS os zeros.',
+    novos: ['JMP', 'JEZ'],
+    dica: 'Crie uma etiqueta no começo, tipo "INICIO: IN". Depois use JEZ INICIO para pular o OUT quando for zero.',
+    gerar: () => { const e = lista(12, -3, 5).map(x => (Math.random() < .35 ? 0 : x)); e[r(0, 11)] = r(1, 5); return [e, e.filter(x => x !== 0)]; },
+    solucao: 'INICIO: IN\nJEZ INICIO\nOUT',
+  },
+  {
+    titulo: 'SÓ POSITIVOS',
+    historia: 'Só os robôs com energia positiva podem passar pelo portão.',
+    objetivo: 'Envie apenas os números maiores que zero.',
+    novos: ['JGZ', 'JLZ', 'JNZ'],
+    dica: 'Se o número for > 0, pule até o OUT. Se não, volte para o começo.',
+    gerar: () => { const e = lista(12, -9, 9); e[r(0, 5)] = r(1, 9); e[r(6, 11)] = r(1, 9); return [e, e.filter(x => x > 0)]; },
+    solucao: 'INICIO: IN\nJGZ OK\nJMP INICIO\nOK: OUT',
+  },
+  {
+    titulo: 'DETECTOR DE SINAL',
+    historia: 'O radar precisa saber de que lado vem cada robô.',
+    objetivo: 'Para cada número: envie 1 se for positivo, -1 se for negativo, 0 se for zero.',
+    novos: [],
+    dica: 'Você vai precisar de duas etiquetas: uma para o caso positivo e outra para o negativo.',
+    gerar: () => { const e = lista(12, -9, 9).map(x => (Math.random() < .2 ? 0 : x)); return [e, e.map(Math.sign)]; },
+    solucao: 'INICIO: IN\nJGZ POS\nJLZ NEG\nOUT\nJMP INICIO\nPOS: SET 1\nOUT\nJMP INICIO\nNEG: SET -1\nOUT',
+  },
+  {
+    titulo: 'CONTAGEM REGRESSIVA',
+    historia: 'A nave de fuga precisa de uma contagem regressiva para decolar! 🚀',
+    objetivo: 'Para cada número N, envie N, N-1, N-2 ... até 1.',
+    novos: [],
+    dica: 'Isso é um LAÇO (loop): envie, tire 1, e se ainda for maior que zero, volte e envie de novo.',
+    gerar: () => { const e = lista(5, 1, 5); const s = []; e.forEach(n => { for (let i = n; i >= 1; i--) s.push(i); }); return [e, s]; },
+    solucao: 'IN\nLOOP: OUT\nSUB 1\nJGZ LOOP',
+  },
+  {
+    titulo: 'O MAIOR',
+    historia: 'Os números chegam em duplas. O Dr. Bug esconde a chave sempre no maior deles.',
+    objetivo: 'Leia os números de 2 em 2 e envie o MAIOR de cada dupla.',
+    novos: ['SWP'],
+    dica: 'Guarde o primeiro no BAK. Pegue o segundo e faça SUB BAK: se der positivo, o segundo é maior. SWP troca ACC e BAK.',
+    gerar: () => { const e = lista(12, -9, 20); const s = []; for (let i = 0; i < e.length; i += 2) s.push(Math.max(e[i], e[i + 1])); return [e, s]; },
+    solucao: 'INICIO: IN\nSAV\nIN\nSUB BAK\nJGZ SEG\nSWP\nOUT\nJMP INICIO\nSEG: ADD BAK\nOUT',
+  },
+  {
+    titulo: 'SOMA SECRETA',
+    historia: 'As mensagens secretas vêm em grupos. Cada grupo termina com um 0.',
+    objetivo: 'Some os números de cada grupo e envie a soma quando chegar o 0.',
+    novos: [],
+    dica: 'Use o BAK como um "cofrinho" onde vai somando. Quando chegar o zero, envie o cofrinho e zere ele.',
+    gerar: () => {
+      const e = [], s = [];
+      for (let g = 0; g < 4; g++) { const grupo = lista(r(1, 4), 1, 9); e.push(...grupo, 0); s.push(grupo.reduce((a, b) => a + b, 0)); }
+      return [e, s];
+    },
+    solucao: 'NOVO: SET 0\nSAV\nLEIA: IN\nJEZ FIM\nADD BAK\nSAV\nJMP LEIA\nFIM: SWP\nOUT',
+  },
+  {
+    titulo: 'PAR OU ÍMPAR',
+    historia: 'A última porta! Ela só abre se você souber quem é par e quem é ímpar.',
+    objetivo: 'Para cada número, envie 0 se for PAR e 1 se for ÍMPAR.',
+    novos: [],
+    dica: 'Tire 2 várias vezes (um laço!). Se sobrar 0, era par. Se ficar negativo, era ímpar.',
+    gerar: () => { const e = lista(10, 1, 15); return [e, e.map(x => x % 2)]; },
+    solucao: 'IN\nLOOP: SUB 2\nJGZ LOOP\nJEZ PAR\nSET 1\nPAR: OUT',
+  },
+];
+
+const INTRO =
+`> conectando ao servidor... OK
+> identificando agente... OK
+
+Olá, AGENTE. O terrível DR. BUG tomou conta da fábrica de robôs
+e só você pode detê-lo.
+
+Os computadores dele só entendem uma linguagem bem simples.
+Cada missão é um quebra-cabeça: escreva um programa que transforme
+os números da ENTRADA nos números ESPERADOS.
+
+Boa sorte. O mundo conta com você.`;
+
+// ============================================================
+//  PROGRESSO
+// ============================================================
+const CHAVE = 'codigo-secreto-v1';
+let progresso = carregar();
+function carregar() {
+  try { return JSON.parse(localStorage.getItem(CHAVE)) || { feitas: {}, codigos: {} }; }
+  catch { return { feitas: {}, codigos: {} }; }
+}
+function salvar() { try { localStorage.setItem(CHAVE, JSON.stringify(progresso)); } catch {} }
+
+const $ = id => document.getElementById(id);
+
+// ============================================================
+//  COMPILADOR
+// ============================================================
+function compilar(codigo) {
+  const linhas = codigo.split('\n');
+  const instrs = [], etiquetas = {};
+  const pendentes = [];
+  for (let i = 0; i < linhas.length; i++) {
+    let t = linhas[i].replace(/#.*/, '').trim().toUpperCase();
+    if (!t) continue;
+    const m = t.match(/^([A-Z_][A-Z0-9_]*)\s*:\s*(.*)$/);
+    if (m) {
+      if (etiquetas[m[1]] !== undefined) return { erro: `A etiqueta ${m[1]} foi usada duas vezes`, linha: i };
+      etiquetas[m[1]] = instrs.length;
+      t = m[2].trim();
+      if (!t) continue;
+    }
+    const partes = t.split(/[\s,]+/);
+    const op = partes[0], args = partes.slice(1);
+    const c = COMANDOS[op];
+    if (!c) return { erro: `Não conheço o comando "${op}"`, linha: i };
+    if (args.length !== c.args) {
+      return { erro: c.args === 0 ? `${op} não precisa de nada depois` : `${op} precisa de ${c.pulo ? 'uma etiqueta' : 'um número ou BAK'}`, linha: i };
+    }
+    const ins = { op, linha: i };
+    if (c.args) {
+      const a = args[0];
+      if (c.pulo) { ins.alvo = a; pendentes.push(ins); }
+      else if (a === 'BAK' || a === 'ACC') ins.fonte = a;
+      else if (/^-?\d+$/.test(a)) ins.valor = parseInt(a, 10);
+      else return { erro: `"${a}" não é um número (nem BAK)`, linha: i };
+    }
+    instrs.push(ins);
+  }
+  for (const ins of pendentes) {
+    if (etiquetas[ins.alvo] === undefined) return { erro: `Não achei a etiqueta "${ins.alvo}"`, linha: ins.linha };
+    ins.destino = etiquetas[ins.alvo];
+  }
+  if (!instrs.length) return { erro: 'Escreva algum comando primeiro!', linha: null };
+  return { instrs };
+}
+
+const limitar = v => Math.max(-999, Math.min(999, v));
+
+// Executa um passo. Retorna null para continuar, ou { fim: 'ok' | 'erro', msg }
+function executarPasso(m) {
+  const ins = m.instrs[m.pc];
+  const val = ins.fonte === 'BAK' ? m.bak : ins.fonte === 'ACC' ? m.acc : ins.valor;
+  let prox = (m.pc + 1) % m.instrs.length;
+  m.ciclos++;
+  switch (ins.op) {
+    case 'IN':
+      if (m.iIn >= m.entrada.length) {
+        if (m.saida.length === m.esperado.length) return { fim: 'ok' };
+        return { fim: 'erro', msg: `A entrada acabou, mas faltaram ${m.esperado.length - m.saida.length} números na saída.` };
+      }
+      m.acc = m.entrada[m.iIn++]; m.mudou = 'acc'; break;
+    case 'OUT': {
+      const i = m.saida.length;
+      m.saida.push(m.acc);
+      if (m.acc !== m.esperado[i]) {
+        return { fim: 'erro', msg: i >= m.esperado.length ? `Saída demais! Não era para enviar ${m.acc}.` : `Ops! Enviou ${m.acc}, mas era esperado ${m.esperado[i]}.` };
+      }
+      if (m.saida.length === m.esperado.length) return { fim: 'ok' };
+      break;
+    }
+    case 'ADD': m.acc = limitar(m.acc + val); m.mudou = 'acc'; break;
+    case 'SUB': m.acc = limitar(m.acc - val); m.mudou = 'acc'; break;
+    case 'SET': m.acc = limitar(val); m.mudou = 'acc'; break;
+    case 'SAV': m.bak = m.acc; m.mudou = 'bak'; break;
+    case 'SWP': [m.acc, m.bak] = [m.bak, m.acc]; m.mudou = 'ambos'; break;
+    case 'JMP': prox = ins.destino; break;
+    case 'JEZ': if (m.acc === 0) prox = ins.destino; break;
+    case 'JNZ': if (m.acc !== 0) prox = ins.destino; break;
+    case 'JGZ': if (m.acc > 0) prox = ins.destino; break;
+    case 'JLZ': if (m.acc < 0) prox = ins.destino; break;
+  }
+  m.pc = prox;
+  if (m.ciclos >= 5000) return { fim: 'erro', msg: 'Muitos ciclos! Será que o programa ficou num laço infinito? 🌀' };
+  return null;
+}
+
+function novaMaquina(instrs, entrada, esperado) {
+  return { instrs, entrada, esperado, pc: 0, acc: 0, bak: 0, iIn: 0, saida: [], ciclos: 0 };
+}
+
+// Testa uma solução sem mostrar nada (usado para calcular o "recorde" de cada missão)
+function simular(codigo, entrada, esperado) {
+  const c = compilar(codigo);
+  if (c.erro) return { fim: 'erro', msg: c.erro };
+  const m = novaMaquina(c.instrs, entrada, esperado);
+  let res;
+  while (!(res = executarPasso(m)));
+  return { ...res, ciclos: m.ciclos, linhas: c.instrs.length };
+}
+
+// ============================================================
+//  MENU
+// ============================================================
+function mostrarMenu() {
+  $('tela-menu').classList.remove('hidden');
+  $('tela-jogo').classList.add('hidden');
+  const box = $('missoes');
+  box.innerHTML = '';
+  MISSOES.forEach((ms, i) => {
+    const feita = progresso.feitas[i];
+    const liberada = i === 0 || progresso.feitas[i - 1];
+    const el = document.createElement('div');
+    el.className = 'missao' + (liberada ? '' : ' trancada') + (feita ? ' feita' : '');
+    el.innerHTML = `<div class="n">MISSÃO ${String(i + 1).padStart(2, '0')}</div>
+      <div class="t">${liberada ? ms.titulo : '🔒 ???'}</div>
+      <div class="e">${feita ? '★'.repeat(feita.estrelas) + '☆'.repeat(3 - feita.estrelas) : liberada ? '☆☆☆' : ''}</div>`;
+    if (liberada) el.onclick = () => abrirMissao(i);
+    box.appendChild(el);
+  });
+}
+
+let introFeita = false;
+function digitarIntro() {
+  if (introFeita) return;
+  introFeita = true;
+  const el = $('intro');
+  let i = 0;
+  const tick = () => {
+    el.innerHTML = INTRO.slice(0, i) + '<span class="cursor">&nbsp;</span>';
+    if (i < INTRO.length) { i += 2; setTimeout(tick, 18); }
+  };
+  tick();
+}
+
+function irMenu() { parar(); mostrarMenu(); }
+
+// ============================================================
+//  JOGO
+// ============================================================
+let atual = 0, teste = null, maq = null, timer = null, rodando = false, recorde = null;
+
+function abrirMissao(i) {
+  atual = i;
+  const ms = MISSOES[i];
+  const [entrada, esperado] = ms.gerar();
+  teste = { entrada, esperado };
+  recorde = simular(ms.solucao, entrada, esperado);
+  if (recorde.fim !== 'ok') console.warn('Solução da missão', i + 1, 'não funciona:', recorde.msg);
+
+  $('tela-menu').classList.add('hidden');
+  $('tela-jogo').classList.remove('hidden');
+  $('titulo-missao').textContent = `MISSÃO ${String(i + 1).padStart(2, '0')}: ${ms.titulo}`;
+  $('historia').textContent = ms.historia;
+  $('objetivo').textContent = '▸ ' + ms.objetivo;
+  $('dica').classList.add('hidden');
+  $('dica').textContent = '💡 ' + ms.dica;
+
+  // comandos liberados até esta missão
+  const liberados = new Set(MISSOES.slice(0, i + 1).flatMap(m => m.novos));
+  $('referencia').innerHTML = ORDEM_COMANDOS.map(op => {
+    const on = liberados.has(op);
+    return `<div class="linha ${on ? '' : 'trancado'}"><span class="cmd">${on ? op : '???'}${ms.novos.includes(op) ? '<span class="novo">NOVO</span>' : ''}</span><span>${on ? COMANDOS[op].desc : 'libera em outra missão'}</span></div>`;
+  }).join('');
+
+  $('codigo').value = progresso.codigos[i] ?? '# escreva seu programa aqui\n';
+  parar();
+  atualizarGutter();
+}
+
+function mostrarDica() { $('dica').classList.toggle('hidden'); }
+
+// ----- editor -----
+const LH = 24, PAD = 10;
+function atualizarGutter(atualLinha = null, erroLinha = null) {
+  const n = $('codigo').value.split('\n').length;
+  $('gutter').innerHTML = Array.from({ length: n }, (_, i) =>
+    `<div class="${i === atualLinha ? 'atual' : i === erroLinha ? 'erro' : ''}">${i + 1}</div>`).join('');
+  const c = compilar($('codigo').value);
+  $('info-linhas').textContent = c.instrs ? `${c.instrs.length} comandos` : '';
+  sincronizarScroll();
+  const d = $('destaque');
+  const linha = atualLinha ?? erroLinha;
+  if (linha == null) d.classList.add('hidden');
+  else {
+    d.classList.remove('hidden');
+    d.classList.toggle('erro', erroLinha != null && atualLinha == null);
+    d.dataset.linha = linha;
+    posicionarDestaque();
+  }
+}
+function sincronizarScroll() { $('gutter').scrollTop = $('codigo').scrollTop; posicionarDestaque(); }
+function posicionarDestaque() {
+  const d = $('destaque');
+  d.style.top = (PAD + Number(d.dataset.linha || 0) * LH - $('codigo').scrollTop) + 'px';
+}
+$('codigo').addEventListener('input', () => {
+  progresso.codigos[atual] = $('codigo').value; salvar();
+  if (!maq) mensagem('', '');
+  atualizarGutter();
+});
+$('codigo').addEventListener('scroll', sincronizarScroll);
+$('codigo').addEventListener('keydown', e => {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const t = e.target, s = t.selectionStart;
+    t.setRangeText('  ', s, t.selectionEnd, 'end');
+    t.dispatchEvent(new Event('input'));
+  }
+});
+
+function mensagem(txt, tipo) { $('mensagem').textContent = txt; $('mensagem').className = tipo; }
+
+// ----- execução -----
+function preparar() {
+  if (maq) return true;
+  const c = compilar($('codigo').value);
+  if (c.erro) {
+    mensagem('✖ ERRO: ' + c.erro + (c.linha != null ? ` (linha ${c.linha + 1})` : ''), 'erro');
+    bip(180, .25);
+    atualizarGutter(null, c.linha);
+    return false;
+  }
+  maq = novaMaquina(c.instrs, teste.entrada, teste.esperado);
+  $('codigo').readOnly = true;
+  $('btn-parar').disabled = false;
+  mensagem('> executando...', 'aviso');
+  desenharMaquina();
+  return true;
+}
+
+function passo() {
+  pausar();
+  if (!preparar()) return;
+  darPasso();
+}
+
+function darPasso() {
+  const res = executarPasso(maq);
+  desenharMaquina();
+  if (maq.mudou) { pulsar(maq.mudou); maq.mudou = null; }
+  if (res) terminar(res);
+  return res;
+}
+
+const VELOCIDADES = [700, 300, 120, 30, 0];
+function rodar() {
+  if (!preparar()) return;
+  rodando = true;
+  $('btn-rodar').disabled = true;
+  $('btn-pausar').disabled = false;
+  const loop = () => {
+    if (!rodando) return;
+    const v = VELOCIDADES[$('velocidade').value];
+    if (v === 0) {
+      for (let k = 0; k < 50; k++) if (darPasso()) return;
+      timer = setTimeout(loop, 16);
+    } else {
+      if (darPasso()) return;
+      timer = setTimeout(loop, v);
+    }
+  };
+  loop();
+}
+
+function pausar() {
+  rodando = false; clearTimeout(timer);
+  $('btn-rodar').disabled = false;
+  $('btn-pausar').disabled = true;
+}
+
+function parar() {
+  pausar();
+  maq = null;
+  $('codigo').readOnly = false;
+  $('btn-parar').disabled = true;
+  $('btn-passo').disabled = false;
+  $('reg-acc').querySelector('.valor').textContent = 0;
+  $('reg-bak').querySelector('.valor').textContent = 0;
+  $('stat-ciclos').textContent = 'ciclos: 0';
+  $('stat-pc').textContent = 'linha: -';
+  desenharFitas(0, []);
+  atualizarGutter();
+}
+
+function terminar(res) {
+  pausar();
+  $('btn-rodar').disabled = true;
+  $('btn-passo').disabled = true;
+  if (res.fim === 'ok') {
+    mensagem('✔ SUCESSO! Sistema hackeado.', 'ok');
+    vitoria();
+  } else {
+    mensagem('✖ ' + res.msg + '  Aperte ⏹ PARAR para tentar de novo.', 'erro');
+    bip(180, .3);
+  }
+}
+
+function desenharMaquina() {
+  $('reg-acc').querySelector('.valor').textContent = maq.acc;
+  $('reg-bak').querySelector('.valor').textContent = maq.bak;
+  $('stat-ciclos').textContent = 'ciclos: ' + maq.ciclos;
+  const linha = maq.instrs[maq.pc].linha;
+  $('stat-pc').textContent = 'linha: ' + (linha + 1);
+  desenharFitas(maq.iIn, maq.saida);
+  atualizarGutter(linha);
+  // mantém a linha atual visível
+  const ta = $('codigo'), y = PAD + linha * LH;
+  if (y < ta.scrollTop || y > ta.scrollTop + ta.clientHeight - LH * 2) { ta.scrollTop = y - ta.clientHeight / 2; sincronizarScroll(); }
+}
+
+function pulsar(qual) {
+  const alvos = qual === 'ambos' ? ['acc', 'bak'] : [qual];
+  alvos.forEach(a => { const el = $('reg-' + a); el.classList.remove('pulso'); void el.offsetWidth; el.classList.add('pulso'); });
+}
+
+function desenharFitas(iIn, saida) {
+  const { entrada, esperado } = teste;
+  $('fita-in').innerHTML = entrada.map((v, i) => `<div class="cel ${i < iIn ? 'usado' : i === iIn ? 'proximo' : ''}">${v}</div>`).join('');
+  $('fita-esp').innerHTML = esperado.map((v, i) => `<div class="cel ${i === saida.length ? 'proximo' : ''}">${v}</div>`).join('');
+  const linhas = Math.max(esperado.length, saida.length);
+  $('fita-out').innerHTML = Array.from({ length: linhas }, (_, i) => {
+    if (i >= saida.length) return `<div class="cel vazio">·</div>`;
+    return `<div class="cel ${saida[i] === esperado[i] ? 'certo' : 'errado'}">${saida[i]}</div>`;
+  }).join('');
+  const prox = $('fita-in').querySelector('.proximo');
+  if (prox) prox.scrollIntoView({ block: 'nearest' });
+}
+
+// ----- vitória -----
+function vitoria() {
+  const linhas = maq.instrs.length, ciclos = maq.ciclos;
+  const est = 1 + (linhas <= recorde.linhas ? 1 : 0) + (ciclos <= recorde.ciclos ? 1 : 0);
+  const antes = progresso.feitas[atual];
+  progresso.feitas[atual] = {
+    estrelas: Math.max(est, antes?.estrelas || 0),
+    linhas: Math.min(linhas, antes?.linhas ?? Infinity),
+    ciclos: Math.min(ciclos, antes?.ciclos ?? Infinity),
+  };
+  salvar();
+
+  $('v-estrelas').textContent = '★'.repeat(est) + '☆'.repeat(3 - est);
+  $('v-linhas').innerHTML = `comandos: ${linhas} ${linhas <= recorde.linhas ? '★' : `<span style="opacity:.6">(meta: ${recorde.linhas})</span>`}`;
+  $('v-ciclos').innerHTML = `ciclos: ${ciclos} ${ciclos <= recorde.ciclos ? '★' : `<span style="opacity:.6">(meta: ${recorde.ciclos})</span>`}`;
+  $('v-proxima').classList.toggle('hidden', atual + 1 >= MISSOES.length);
+  $('vitoria').classList.remove('hidden');
+  chuvaDeCodigo();
+  [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => bip(f, .15), i * 110));
+}
+
+function fecharVitoria() { $('vitoria').classList.add('hidden'); parar(); }
+function proximaMissao() { $('vitoria').classList.add('hidden'); abrirMissao(atual + 1); }
+
+function chuvaDeCodigo() {
+  const box = $('chuva');
+  for (let i = 0; i < 40; i++) {
+    const g = document.createElement('div');
+    g.className = 'gota';
+    g.textContent = Array.from({ length: 8 }, () => Math.random() < .5 ? '0' : '1').join('\n');
+    g.style.whiteSpace = 'pre';
+    g.style.left = Math.random() * 100 + 'vw';
+    g.style.animationDuration = 1.5 + Math.random() * 2 + 's';
+    g.style.animationDelay = Math.random() * .8 + 's';
+    box.appendChild(g);
+    setTimeout(() => g.remove(), 5000);
+  }
+}
+
+// ----- som -----
+let audio;
+function bip(freq, dur) {
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.type = 'square'; o.frequency.value = freq;
+    g.gain.setValueAtTime(.06, audio.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001, audio.currentTime + dur);
+    o.connect(g).connect(audio.destination);
+    o.start(); o.stop(audio.currentTime + dur);
+  } catch {}
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !$('vitoria').classList.contains('hidden')) fecharVitoria();
+});
+
+mostrarMenu();
+digitarIntro();
+</script>
+</body>
+</html>
